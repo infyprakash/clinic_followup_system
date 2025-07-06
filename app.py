@@ -116,8 +116,10 @@ class MainDashboard(QMainWindow):
             self.settings_ui.refresh_dropdowns()
 
 if __name__ == "__main__":
+    StatusDB()
     app = QApplication(sys.argv)
     window = MainDashboard()
+    # window = SettingsWindow()
     window.show()
     sys.exit(app.exec())
 

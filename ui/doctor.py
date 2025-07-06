@@ -7,6 +7,10 @@ from PyQt6.QtWidgets import (
 from database.doctor_db import DoctorDB
 from database.setting_db import SpecializationDB
 
+from PyQt6.QtGui import QFont
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QSizePolicy
+
 
 class DoctorManagement(QWidget):
     def __init__(self):
@@ -18,30 +22,66 @@ class DoctorManagement(QWidget):
         self.selected_id = None
         self.initUI()
 
-    def initUI(self):
-        layout = QVBoxLayout()
 
-        # --- Form Layout ---
-        form_layout = QHBoxLayout()
+
+    def initUI(self):
+        main_layout = QVBoxLayout()
+
+        # --- Top Half: Form and Buttons ---
+        top_layout = QHBoxLayout()
+
+        # 🎯 Font for inputs and buttons
+        input_font = QFont()
+        input_font.setPointSize(12)
+
+        # 📋 Left side: Form
+        form_layout = QVBoxLayout()
         self.name_input = QLineEdit()
-        self.name_input.setPlaceholderText("Doctor Name")
+        self.name_input.setPlaceholderText("Enter Doctor Name")
+        self.name_input.setFont(input_font)
 
         self.spec_input = QComboBox()
+        self.spec_input.setFont(input_font)
         self.refresh_specialization_dropdown()
 
-        form_layout.addWidget(QLabel("Name:"))
-        form_layout.addWidget(self.name_input)
-        form_layout.addWidget(QLabel("Specialization:"))
-        form_layout.addWidget(self.spec_input)
+        # Labels and fields vertically
+        for label_text, widget in [
+            ("Name", self.name_input),
+            ("Specialization", self.spec_input)
+        ]:
+            lbl = QLabel(label_text)
+            lbl.setFont(input_font)
+            form_layout.addWidget(lbl)
+            form_layout.addWidget(widget)
 
-        layout.addLayout(form_layout)
+        top_layout.addLayout(form_layout, 2)
 
-        # --- Buttons ---
-        button_layout = QHBoxLayout()
-        add_btn = QPushButton("Add")
-        update_btn = QPushButton("Update")
-        delete_btn = QPushButton("Delete")
-        clear_btn = QPushButton("Clear")
+        # 🔘 Right side: Buttons
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(12)
+
+        button_font = QFont()
+        button_font.setPointSize(11)
+
+        def styled_button(text, color):
+            btn = QPushButton(text)
+            btn.setFont(button_font)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                }}
+            """)
+            btn.setMinimumHeight(40)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            return btn
+
+        add_btn = styled_button("Add", "#28a745")         # Green
+        update_btn = styled_button("Update", "#007bff")   # Blue
+        delete_btn = styled_button("Delete", "#dc3545")   # Red
+        clear_btn = styled_button("Clear", "#6c757d")     # Gray
 
         add_btn.clicked.connect(self.add_doctor)
         update_btn.clicked.connect(self.update_doctor)
@@ -51,17 +91,31 @@ class DoctorManagement(QWidget):
         for btn in [add_btn, update_btn, delete_btn, clear_btn]:
             button_layout.addWidget(btn)
 
-        layout.addLayout(button_layout)
+        top_layout.addLayout(button_layout, 1)
+        main_layout.addLayout(top_layout)
 
-        # --- Table ---
+        # --- Spacer ---
+        main_layout.addSpacing(30)
+
+        # 🔍 (Optional) Search Field — if you want to filter doctors
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search doctors...")
+        self.search_input.setFont(input_font)
+        self.search_input.textChanged.connect(self.refresh_table)
+        main_layout.addWidget(self.search_input)
+
+        # 📊 Table
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Specialization"])
+        self.table.setFont(QFont("Arial", 11))
         self.table.cellClicked.connect(self.table_clicked)
-        layout.addWidget(self.table)
 
-        self.setLayout(layout)
+        main_layout.addWidget(self.table)
+        self.setLayout(main_layout)
+
         self.refresh_table()
+
 
     def refresh_specialization_dropdown(self):
         self.spec_input.clear()

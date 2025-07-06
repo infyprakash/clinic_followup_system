@@ -10,29 +10,29 @@ class PatientDB:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT,
             gender TEXT,
-            date_of_birth TEXT,
+            age TEXT,
             phone_number TEXT,
             address TEXT
         )
         """)
         self.conn.commit()
-    def insert_patient(self,name,gender,date_of_birth,phone_number,address):
-        self.conn.execute("INSERT INTO patients (name,gender,date_of_birth,phone_number,address) values (?,?,?,?,?)",(name,gender,date_of_birth,phone_number,address))
+    def insert_patient(self,name,gender,age,phone_number,address):
+        self.conn.execute("INSERT INTO patients (name,gender,age,phone_number,address) values (?,?,?,?,?)",(name,gender,age,phone_number,address))
         self.conn.commit()
     def get_all_patients(self):
         return self.conn.execute("SELECT * FROM patients").fetchall()
     def delete_patient(self,id):
         self.conn.execute("DELETE FROM patients WHERE id=?",(id,))
         self.conn.commit()
-    def update_patient(self,id,name,gender,date_of_birth,phone_number,address):
-        self.conn.execute("UPDATE patients set name=?,gender=?,date_of_birth=?,phone_number=?,address=? WHERE id=?",(name,gender,date_of_birth,phone_number,address,id))
+    def update_patient(self,id,name,gender,age,phone_number,address):
+        self.conn.execute("UPDATE patients set name=?,gender=?,age=?,phone_number=?,address=? WHERE id=?",(name,gender,age,phone_number,address,id))
     def get_all(self):
-        return self.conn.execute("SELECT id, name FROM patients").fetchall()
+        return self.conn.execute("SELECT id, name,phone_number FROM patients").fetchall()
 
     def get_all_with_summary(self):
         return self.conn.execute("""
             SELECT 
-                p.id, p.name, p.gender, p.date_of_birth, p.phone_number, p.address,
+                p.id, p.name, p.gender, p.age, p.phone_number, p.address,
                 IFNULL(appt.total_appointments, 0) as appointments,
                 IFNULL(fup.total_followups, 0) as followups
             FROM patients p

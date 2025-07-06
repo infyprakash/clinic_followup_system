@@ -1,66 +1,95 @@
-import sys
 from database.clinic_db import PatientDB
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
-    QLabel, QLineEdit, QPushButton, QComboBox, QDateEdit,
-    QTableWidget, QTableWidgetItem, QMessageBox
+    QLabel, QLineEdit, QPushButton, QComboBox,
+    QTableWidget, QTableWidgetItem, QMessageBox, QSizePolicy
 )
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QFont
 
 class PatientManagement(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Clinic - Patient Management")
-        self.setGeometry(100, 100, 900, 600)
+        self.setWindowTitle("Subhekta - Patient Management")
+        self.setGeometry(100, 100, 1000, 700)
         self.db = PatientDB()
         self.selected_id = None
         self.initUI()
     
     def initUI(self):
         main_widget = QWidget()
-        main_layout = QVBoxLayout()
+        main_layout = QVBoxLayout(main_widget)
 
-        # 🔍 Search bar
-        self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by name or phone number...")
-        self.search_input.textChanged.connect(self.refresh_table)
-        main_layout.addWidget(self.search_input)
+        # --- Top Half: Form and Buttons ---
+        top_layout = QHBoxLayout()
 
-        # 🧾 Form layout 
-        form_layout = QHBoxLayout()
+        # 📋 Left side: Form
+        form_layout = QVBoxLayout()
+
+        font = QFont()
+        font.setPointSize(12)
+
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Enter Full Name")
+        self.name_input.setFont(font)
 
         self.gender_input = QComboBox()
-        self.gender_input.addItems(["Male","Female","Others"])
+        self.gender_input.addItems(["Male", "Female", "Others"])
+        self.gender_input.setFont(font)
 
-        self.date_of_birth_input = QDateEdit()
-        self.date_of_birth_input.setCalendarPopup(True)
-        self.date_of_birth_input.setDate(QDate.currentDate())
+        self.age_input = QLineEdit()
+        self.age_input.setPlaceholderText("Enter Patient Age")
+        self.age_input.setFont(font)
 
         self.phone_number_input = QLineEdit()
         self.phone_number_input.setPlaceholderText("Enter Patient Phone Number")
+        self.phone_number_input.setFont(font)
 
         self.address_input = QLineEdit()
-        self.address_input.setPlaceholderText("Enter Patient address")
+        self.address_input.setPlaceholderText("Enter Patient Address")
+        self.address_input.setFont(font)
 
-        form_layout.addWidget(QLabel("Name:"))
-        form_layout.addWidget(self.name_input)
-        form_layout.addWidget(QLabel("Gender:"))
-        form_layout.addWidget(self.gender_input)
-        form_layout.addWidget(QLabel("DOB:"))
-        form_layout.addWidget(self.date_of_birth_input)
-        form_layout.addWidget(QLabel("Phone:"))
-        form_layout.addWidget(self.phone_number_input)
-        form_layout.addWidget(QLabel("Address:"))
-        form_layout.addWidget(self.address_input)
+        for label_text, widget in [
+            ("Name", self.name_input),
+            ("Gender", self.gender_input),
+            ("Age", self.age_input),
+            ("Phone", self.phone_number_input),
+            ("Address", self.address_input),
+        ]:
+            form_layout.addWidget(QLabel(label_text))
+            form_layout.addWidget(widget)
 
-        # 🔘 Button layout 
-        button_layout = QHBoxLayout()
-        add_btn = QPushButton("Add Patient")
-        update_btn = QPushButton("Update")
-        delete_btn = QPushButton("Delete")
-        clear_btn = QPushButton("Clear")
+        top_layout.addLayout(form_layout, 2)
+
+        # 🎯 Right side: Buttons
+        button_layout = QVBoxLayout()
+        button_layout.setSpacing(12)  # Add spacing between buttons
+
+        button_font = QFont()
+        button_font.setPointSize(11)
+
+        def styled_button(text, color):
+            btn = QPushButton(text)
+            btn.setFont(button_font)
+            btn.setStyleSheet(f"""
+                QPushButton {{
+                    background-color: {color};
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                }}
+                # QPushButton:hover {{
+                #     background-color: darken({color}, 10%);
+                # }}
+            """)
+            btn.setMinimumHeight(40)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            return btn
+
+        add_btn = styled_button("Add Patient", "#28a745")      # Green
+        update_btn = styled_button("Update", "#007bff")        # Blue
+        delete_btn = styled_button("Delete", "#dc3545")        # Red
+        clear_btn = styled_button("Clear", "#6c757d")          # Gray
 
         add_btn.clicked.connect(self.add_patient)
         update_btn.clicked.connect(self.update_patient)
@@ -70,33 +99,42 @@ class PatientManagement(QMainWindow):
         for btn in [add_btn, update_btn, delete_btn, clear_btn]:
             button_layout.addWidget(btn)
 
-        # 📊 Table setup 
+        top_layout.addLayout(button_layout, 1)
+        main_layout.addLayout(top_layout)
+
+        # --- Spacer ---
+        main_layout.addSpacing(30)
+
+        # 🔍 Search bar
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Search by name or phone number...")
+        self.search_input.setFont(font)
+        self.search_input.textChanged.connect(self.refresh_table)
+        main_layout.addWidget(self.search_input)
+
+        # 📊 Table
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setHorizontalHeaderLabels([
-            "ID", "Name", "Gender", "DOB", "Phone", "Address", "Appointments", "Follow-Ups"
+            "ID", "Name", "Gender", "Age", "Phone", "Address", "Appointments", "Follow-Ups"
         ])
+        self.table.setFont(QFont("Arial", 11))
         self.table.cellClicked.connect(self.table_clicked)
 
-        # 📦 Add to layout
-        main_layout.addLayout(form_layout)
-        main_layout.addLayout(button_layout)
         main_layout.addWidget(self.table)
 
-        main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
-
         self.refresh_table()
 
     def add_patient(self):
         name = self.name_input.text()
         gender = self.gender_input.currentText()
-        dob = self.date_of_birth_input.date().toString("yyyy-MM-dd")
+        age = self.age_input.text()
         phone = self.phone_number_input.text()
         address = self.address_input.text()
 
         if name and phone:
-            self.db.insert_patient(name, gender, dob, phone, address)
+            self.db.insert_patient(name, gender, age, phone, address)
             self.refresh_table()
             self.clear_form()
         else:
@@ -109,11 +147,11 @@ class PatientManagement(QMainWindow):
 
         name = self.name_input.text()
         gender = self.gender_input.currentText()
-        dob = self.date_of_birth_input.date().toString("yyyy-MM-dd")
+        age = self.age_input.text()
         phone = self.phone_number_input.text()
         address = self.address_input.text()
 
-        self.db.update_patient(self.selected_id, name, gender, dob, phone, address)
+        self.db.update_patient(self.selected_id, name, gender, age, phone, address)
         self.refresh_table()
         self.clear_form()
 
@@ -130,7 +168,7 @@ class PatientManagement(QMainWindow):
         self.selected_id = int(self.table.item(row, 0).text())
         self.name_input.setText(self.table.item(row, 1).text())
         self.gender_input.setCurrentText(self.table.item(row, 2).text())
-        self.date_of_birth_input.setDate(QDate.fromString(self.table.item(row, 3).text(), "yyyy-MM-dd"))
+        self.age_input.setText(self.table.item(row, 3).text())
         self.phone_number_input.setText(self.table.item(row, 4).text())
         self.address_input.setText(self.table.item(row, 5).text())
 
@@ -151,6 +189,6 @@ class PatientManagement(QMainWindow):
         self.selected_id = None
         self.name_input.clear()
         self.gender_input.setCurrentIndex(0)
-        self.date_of_birth_input.setDate(QDate.currentDate())
+        self.age_input.clear()
         self.phone_number_input.clear()
         self.address_input.clear()

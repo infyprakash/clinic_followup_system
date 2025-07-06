@@ -32,6 +32,7 @@ class StatusDB:
     def __init__(self):
         self.conn = sqlite3.connect("clinic.db")
         self.create_table()
+        self.seed_statuses()
 
     def create_table(self):
         self.conn.execute("""
@@ -45,6 +46,11 @@ class StatusDB:
     def insert(self, name):
         self.conn.execute("INSERT OR IGNORE INTO statuses (name) VALUES (?)", (name,))
         self.conn.commit()
+
+    def seed_statuses(self):
+        default_statuses = ["Pending", "Completed", "Cancelled"]
+        for status in default_statuses:
+            self.insert(status)
 
     def get_all(self):
         return self.conn.execute("SELECT * FROM statuses").fetchall()

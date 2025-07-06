@@ -1,132 +1,164 @@
-import csv
-from fpdf import FPDF
 from PyQt6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QDateEdit,
-    QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QMessageBox,
-    QCheckBox, QFileDialog
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton,
+    QComboBox, QDateEdit, QTableWidget, QTableWidgetItem, QMessageBox,
+    QListWidget, QListWidgetItem, QSizePolicy
 )
-from PyQt6.QtCore import QDate
+from PyQt6.QtCore import QDate, Qt
+from PyQt6.QtGui import QFont,QColor
 
-
-
-# from database.db import FollowUpDB, PatientDB, StatusDB
 
 from database.followup_db import FollowUpDB
-from database.appointment_db import AppointmentDB
 from database.clinic_db import PatientDB
-from database.doctor_db import DoctorDB
-from database.setting_db import  StatusDB
+from database.setting_db import StatusDB
 
 
 class FollowUpManager(QWidget):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Follow-Up Management")
-        self.setGeometry(200, 200, 900, 450)
+        self.setGeometry(100, 100, 1000, 500)
         self.db = FollowUpDB()
+        self.patient_db = PatientDB()
+        self.status_db = StatusDB()
         self.selected_id = None
-
+        self.selected_patient_id = None
         self.initUI()
 
     def initUI(self):
-        layout = QVBoxLayout()
+        main_layout = QVBoxLayout()
 
-        # --- Form Layout ---
-        form = QHBoxLayout()
-        self.patient_input = QComboBox()
+        # --- Top Section: Form and Buttons (side by side) ---
+        top_layout = QHBoxLayout()
+
+        # ----- Left Form Section -----
+        form_layout = QVBoxLayout()
+
+        # Searchable patient
+        form_layout.addWidget(QLabel("Search Patient (Name or Phone):"))
+        self.patient_search_input = QLineEdit()
+        self.patient_search_input.setPlaceholderText("Start typing to search patient...")
+        self.patient_search_input.textChanged.connect(self.on_patient_search)
+        form_layout.addWidget(self.patient_search_input)
+
+        self.patient_list_widget = QListWidget()
+        self.patient_list_widget.setMaximumHeight(80)
+        self.patient_list_widget.itemClicked.connect(self.on_patient_selected)
+        form_layout.addWidget(self.patient_list_widget)
+
+        # Status
+        form_layout.addWidget(QLabel("Status:"))
         self.status_input = QComboBox()
+        form_layout.addWidget(self.status_input)
 
+        # Date
+        form_layout.addWidget(QLabel("Follow-up Date:"))
         self.date_input = QDateEdit()
         self.date_input.setCalendarPopup(True)
         self.date_input.setDate(QDate.currentDate())
+        form_layout.addWidget(self.date_input)
 
+        # Remarks
+        form_layout.addWidget(QLabel("Remarks:"))
         self.remarks_input = QLineEdit()
-        self.remarks_input.setPlaceholderText("Enter remarks")
+        form_layout.addWidget(self.remarks_input)
 
-        form.addWidget(QLabel("Patient:"))
-        form.addWidget(self.patient_input)
-        form.addWidget(QLabel("Date:"))
-        form.addWidget(self.date_input)
-        form.addWidget(QLabel("Status:"))
-        form.addWidget(self.status_input)
+        top_layout.addLayout(form_layout, 2)
 
-        layout.addLayout(form)
+        # ----- Right Button Section -----
+        button_layout = QVBoxLayout()
 
-        form2 = QHBoxLayout()
-        form2.addWidget(QLabel("Remarks:"))
-        form2.addWidget(self.remarks_input)
-        layout.addLayout(form2)
+        self.add_btn = QPushButton("Add")
+        self.update_btn = QPushButton("Update")
+        self.delete_btn = QPushButton("Delete")
+        self.clear_btn = QPushButton("Clear")
+
+        for btn, color in zip(
+            [self.add_btn, self.update_btn, self.delete_btn, self.clear_btn],
+            ["#4CAF50", "#2196F3", "#f44336", "#9E9E9E"]
+        ):
+            btn.setStyleSheet(f"""
+                background-color: {color};
+                color: white;
+                font-weight: bold;
+                font-size: 16px;
+                min-height: 40px;
+            """)
+            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            button_layout.addWidget(btn)
+
+        button_layout.addStretch()
+        top_layout.addLayout(button_layout, 1)
+
+        main_layout.addLayout(top_layout)
 
 
-        self.sort_checkbox = QCheckBox("Sort by Follow-up Count")
-        self.sort_checkbox.stateChanged.connect(self.refresh_table)
-        layout.addWidget(self.sort_checkbox)
+        # --- Bottom Section: Search + Table ---
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("🔍 Search by patient name or phone...")
+        self.search_input.textChanged.connect(self.refresh_table)
+        main_layout.addWidget(self.search_input)
 
-        export_layout = QHBoxLayout()
-        export_btn_csv = QPushButton("Export to CSV")
-        export_btn_pdf = QPushButton("Export to PDF")
-        export_btn_csv.clicked.connect(self.export_csv)
-        export_btn_pdf.clicked.connect(self.export_pdf)
-        export_layout.addWidget(export_btn_csv)
-        export_layout.addWidget(export_btn_pdf)
-        layout.addLayout(export_layout)
-
-        # --- Buttons ---
-        btn_layout = QHBoxLayout()
-        add_btn = QPushButton("Add")
-        update_btn = QPushButton("Update")
-        delete_btn = QPushButton("Delete")
-        clear_btn = QPushButton("Clear")
-
-        add_btn.clicked.connect(self.add_followup)
-        update_btn.clicked.connect(self.update_followup)
-        delete_btn.clicked.connect(self.delete_followup)
-        clear_btn.clicked.connect(self.clear_form)
-
-        for b in [add_btn, update_btn, delete_btn, clear_btn]:
-            btn_layout.addWidget(b)
-
-        layout.addLayout(btn_layout)
-
-        # --- Table ---
         self.table = QTableWidget()
         self.table.setColumnCount(6)
         self.table.setHorizontalHeaderLabels(["ID", "Patient", "Date", "Remarks", "Status", "Follow-up Count"])
         self.table.cellClicked.connect(self.table_clicked)
-        layout.addWidget(self.table)
+        main_layout.addWidget(self.table)
 
-        self.setLayout(layout)
+        self.setLayout(main_layout)
+
+        # Connect button actions
+        self.add_btn.clicked.connect(self.add_followup)
+        self.update_btn.clicked.connect(self.update_followup)
+        self.delete_btn.clicked.connect(self.delete_followup)
+        self.clear_btn.clicked.connect(self.clear_form)
+
         self.refresh_dropdowns()
         self.refresh_table()
 
-    def refresh_dropdowns(self):
-        self.patient_input.clear()
-        for pid, name in PatientDB().get_all():
-            count = self.db.conn.execute("SELECT COUNT(*) FROM followups WHERE patient_id=?", (pid,)).fetchone()[0]
-            self.patient_input.addItem(f"{name} ({count})", pid)
+    def on_patient_search(self, text):
+        self.load_patient_list(text)
 
+    def on_patient_selected(self, item):
+        self.selected_patient_id = item.data(Qt.ItemDataRole.UserRole)
+        self.patient_search_input.setText(item.text())
+        self.patient_list_widget.clear()
+
+    def load_patient_list(self, filter_text=""):
+        self.patient_list_widget.clear()
+        patients = self.patient_db.get_all()
+        filter_text = filter_text.lower()
+        for pid, name, phone in patients:
+            if filter_text in name.lower() or filter_text in phone.lower():
+                item = QListWidgetItem(f"{name} ({phone})")
+                item.setData(Qt.ItemDataRole.UserRole, pid)
+                self.patient_list_widget.addItem(item)
+
+    def refresh_dropdowns(self):
         self.status_input.clear()
-        for sid, name in StatusDB().get_all():
+        for sid, name in self.status_db.get_all():
             self.status_input.addItem(name, sid)
 
+        self.load_patient_list()
+
     def get_selected_ids(self):
-        return self.patient_input.currentData(), self.status_input.currentData()
+        return self.selected_patient_id, self.status_input.currentData()
 
     def add_followup(self):
         patient_id, status_id = self.get_selected_ids()
         date = self.date_input.date().toString("yyyy-MM-dd")
         remarks = self.remarks_input.text().strip()
 
-        if patient_id and date:
-            self.db.insert(patient_id, date, remarks, status_id)
-            self.refresh_table()
-            self.clear_form()
-        else:
-            QMessageBox.warning(self, "Missing", "Patient and Date are required.")
+        if not patient_id:
+            QMessageBox.warning(self, "Validation Error", "Please select a patient.")
+            return
+
+        self.db.insert(patient_id, date, remarks, status_id)
+        self.refresh_table()
+        self.clear_form()
 
     def update_followup(self):
         if self.selected_id is None:
-            QMessageBox.warning(self, "No selection", "Select a follow-up to update.")
+            QMessageBox.warning(self, "No Selection", "Select a follow-up to update.")
             return
 
         patient_id, status_id = self.get_selected_ids()
@@ -139,7 +171,7 @@ class FollowUpManager(QWidget):
 
     def delete_followup(self):
         if self.selected_id is None:
-            QMessageBox.warning(self, "No selection", "Select a follow-up to delete.")
+            QMessageBox.warning(self, "No Selection", "Select a follow-up to delete.")
             return
 
         self.db.delete(self.selected_id)
@@ -148,63 +180,54 @@ class FollowUpManager(QWidget):
 
     def table_clicked(self, row, col):
         self.selected_id = int(self.table.item(row, 0).text())
-        self.patient_input.setCurrentText(self.table.item(row, 1).text())
+        patient_name = self.table.item(row, 1).text()
+
+        for pid, name, phone in self.patient_db.get_all():
+            display = f"{name} ({phone})"
+            if name in patient_name:
+                self.selected_patient_id = pid
+                self.patient_search_input.setText(display)
+                break
+
         self.date_input.setDate(QDate.fromString(self.table.item(row, 2).text(), "yyyy-MM-dd"))
         self.remarks_input.setText(self.table.item(row, 3).text())
         self.status_input.setCurrentText(self.table.item(row, 4).text())
 
     def refresh_table(self):
-        self.table.setRowCount(0)
-        if self.sort_checkbox.isChecked():
-            rows = self.db.get_all_sorted_by_count()
-        else:
-            rows = self.db.get_all()
+        keyword = self.search_input.text().lower()
+        rows = self.db.get_all()
 
+        self.table.setRowCount(0)
         for row in rows:
+            if keyword and keyword not in row[1].lower():
+                continue
+            
             row_index = self.table.rowCount()
             self.table.insertRow(row_index)
+
+            # Assuming follow-up status is in column index 6 (adjust if different)
+            follow_up_status = str(row[4]).lower()
+
+            # Define colors based on follow-up status
+            if follow_up_status == "pending":
+                background_color = QColor("#FFFACD")  # Light yellow
+            elif follow_up_status == "cancelled":
+                background_color = QColor("#F08080")  # Light coral (red-ish)
+            elif follow_up_status == "completed":
+                background_color = QColor("#90EE90")  # Light green
+            else:
+                background_color = QColor("white")  # Default
+
             for col, val in enumerate(row):
-                self.table.setItem(row_index, col, QTableWidgetItem(str(val)))
-
-    def export_csv(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv)")
-        if path:
-            with open(path, 'w', newline='') as file:
-                writer = csv.writer(file)
-                headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
-                writer.writerow(headers)
-                for row in range(self.table.rowCount()):
-                    row_data = [self.table.item(row, col).text() for col in range(self.table.columnCount())]
-                    writer.writerow(row_data)
-            QMessageBox.information(self, "Success", "Exported to CSV.")
-
-    def export_pdf(self):
-        path, _ = QFileDialog.getSaveFileName(self, "Save PDF", "", "PDF Files (*.pdf)")
-        if path:
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=10)
-            col_width = pdf.w / 6.5
-            row_height = 8
-
-            headers = [self.table.horizontalHeaderItem(i).text() for i in range(self.table.columnCount())]
-            for header in headers:
-                pdf.cell(col_width, row_height, header, border=1)
-            pdf.ln()
-
-            for row in range(self.table.rowCount()):
-                for col in range(self.table.columnCount()):
-                    value = self.table.item(row, col).text()
-                    pdf.cell(col_width, row_height, value, border=1)
-                pdf.ln()
-
-            pdf.output(path)
-            QMessageBox.information(self, "Success", "Exported to PDF.")
-
+                item = QTableWidgetItem(str(val))
+                item.setBackground(background_color)
+                self.table.setItem(row_index, col, item)
 
     def clear_form(self):
         self.selected_id = None
-        self.patient_input.setCurrentIndex(0)
+        self.selected_patient_id = None
+        self.patient_search_input.clear()
+        self.patient_list_widget.clear()
         self.status_input.setCurrentIndex(0)
         self.date_input.setDate(QDate.currentDate())
         self.remarks_input.clear()
