@@ -2,7 +2,7 @@ from database.clinic_db import PatientDB
 from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QLineEdit, QPushButton, QComboBox,
-    QTableWidget, QTableWidgetItem, QMessageBox, QSizePolicy
+    QTableWidget, QTableWidgetItem, QMessageBox, QSizePolicy,QFormLayout,QFrame
 )
 from PyQt6.QtCore import QDate, Qt
 from PyQt6.QtGui import QFont
@@ -19,54 +19,70 @@ class PatientManagement(QMainWindow):
     def initUI(self):
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
         # --- Top Half: Form and Buttons ---
         top_layout = QHBoxLayout()
 
         # 📋 Left side: Form
-        form_layout = QVBoxLayout()
+        form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        form_layout.setFormAlignment(Qt.AlignmentFlag.AlignTop)
 
-        font = QFont()
-        font.setPointSize(12)
+        font = QFont("Arial", 12)
+
+        def styled_input(placeholder):
+            input_widget = QLineEdit()
+            input_widget.setFont(font)
+            input_widget.setPlaceholderText(placeholder)
+            input_widget.setMinimumHeight(40)
+            input_widget.setStyleSheet("padding: 6px;")
+            return input_widget
 
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Enter Full Name")
         self.name_input.setFont(font)
+        self.name_input.setMinimumWidth(400) 
+        self.name_input.setMinimumHeight(35)
+
 
         self.gender_input = QComboBox()
         self.gender_input.addItems(["Male", "Female", "Others"])
         self.gender_input.setFont(font)
+        self.gender_input.setMinimumWidth(400)
+        self.gender_input.setMinimumHeight(35)
 
         self.age_input = QLineEdit()
         self.age_input.setPlaceholderText("Enter Patient Age")
         self.age_input.setFont(font)
+        self.age_input.setMinimumWidth(400)
+        self.age_input.setMinimumHeight(35)
 
         self.phone_number_input = QLineEdit()
         self.phone_number_input.setPlaceholderText("Enter Patient Phone Number")
         self.phone_number_input.setFont(font)
+        self.phone_number_input.setMinimumWidth(400)
+        self.phone_number_input.setMinimumHeight(35)
 
         self.address_input = QLineEdit()
         self.address_input.setPlaceholderText("Enter Patient Address")
         self.address_input.setFont(font)
+        self.address_input.setMinimumWidth(400)
+        self.address_input.setMinimumHeight(35)
 
-        for label_text, widget in [
-            ("Name", self.name_input),
-            ("Gender", self.gender_input),
-            ("Age", self.age_input),
-            ("Phone", self.phone_number_input),
-            ("Address", self.address_input),
-        ]:
-            form_layout.addWidget(QLabel(label_text))
-            form_layout.addWidget(widget)
+        form_layout.addRow("👤 Name:", self.name_input)
+        form_layout.addRow("⚧️ Gender:", self.gender_input)
+        form_layout.addRow("🎂 Age:", self.age_input)
+        form_layout.addRow("📞 Phone:", self.phone_number_input)
+        form_layout.addRow("🏠 Address:", self.address_input)
 
         top_layout.addLayout(form_layout, 2)
 
         # 🎯 Right side: Buttons
         button_layout = QVBoxLayout()
-        button_layout.setSpacing(12)  # Add spacing between buttons
+        button_layout.setSpacing(15)
 
-        button_font = QFont()
-        button_font.setPointSize(11)
+        button_font = QFont("Arial", 11)
 
         def styled_button(text, color):
             btn = QPushButton(text)
@@ -75,21 +91,21 @@ class PatientManagement(QMainWindow):
                 QPushButton {{
                     background-color: {color};
                     color: white;
-                    padding: 8px 16px;
-                    border-radius: 6px;
+                    padding: 10px 18px;
+                    border-radius: 8px;
                 }}
-                # QPushButton:hover {{
-                #     background-color: darken({color}, 10%);
-                # }}
+                QPushButton:hover {{
+                    background-color: {color};
+                    opacity: 0.9;
+                }}
             """)
-            btn.setMinimumHeight(40)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setMinimumHeight(42)
             return btn
 
-        add_btn = styled_button("Add Patient", "#28a745")      # Green
-        update_btn = styled_button("Update", "#007bff")        # Blue
-        delete_btn = styled_button("Delete", "#dc3545")        # Red
-        clear_btn = styled_button("Clear", "#6c757d")          # Gray
+        add_btn = styled_button("➕ Add Patient", "#28a745")
+        update_btn = styled_button("🔄 Update", "#007bff")
+        delete_btn = styled_button("🗑️ Delete", "#dc3545")
+        clear_btn = styled_button("🧹 Clear", "#6c757d")
 
         add_btn.clicked.connect(self.add_patient)
         update_btn.clicked.connect(self.update_patient)
@@ -102,23 +118,43 @@ class PatientManagement(QMainWindow):
         top_layout.addLayout(button_layout, 1)
         main_layout.addLayout(top_layout)
 
-        # --- Spacer ---
-        main_layout.addSpacing(30)
+        # --- Separator ---
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        main_layout.addWidget(separator)
 
-        # 🔍 Search bar
+        # 🔍 Search Bar
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search by name or phone number...")
+        self.search_input.setPlaceholderText("🔍 Search by name or phone number...")
         self.search_input.setFont(font)
+        self.search_input.setMinimumHeight(40)
+        self.search_input.setStyleSheet("padding: 6px;")
         self.search_input.textChanged.connect(self.refresh_table)
         main_layout.addWidget(self.search_input)
 
         # 📊 Table
         self.table = QTableWidget()
         self.table.setColumnCount(8)
+        self.table.setFont(QFont("Arial", 11))
         self.table.setHorizontalHeaderLabels([
             "ID", "Name", "Gender", "Age", "Phone", "Address", "Appointments", "Follow-Ups"
         ])
-        self.table.setFont(QFont("Arial", 11))
+        self.table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #ccc;
+                background-color: #f9f9f9;
+            }
+            QHeaderView::section {
+                background-color: #007bff;
+                color: white;
+                padding: 8px;
+                border: 1px solid #ddd;
+            }
+        """)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.cellClicked.connect(self.table_clicked)
 
         main_layout.addWidget(self.table)

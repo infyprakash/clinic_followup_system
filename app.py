@@ -14,13 +14,11 @@ from ui.appointment import AppointmentBooking
 from ui.followup import FollowUpManager
 from ui.dashboard import Dashboard
 
-
 from database.followup_db import FollowUpDB
 from database.appointment_db import AppointmentDB
 from database.clinic_db import PatientDB
 from database.doctor_db import DoctorDB
-from database.setting_db import  StatusDB
-
+from database.setting_db import StatusDB
 
 
 class MainDashboard(QMainWindow):
@@ -44,7 +42,6 @@ class MainDashboard(QMainWindow):
         self.btn_appointments = self.create_nav_button("Appointments")
         self.btn_followups = self.create_nav_button("Follow-Ups")
         self.btn_settings = self.create_nav_button("Settings")
-
 
         self.btn_dashboard.clicked.connect(lambda: self.display_page(0))
         self.btn_patients.clicked.connect(lambda: self.display_page(1))
@@ -79,6 +76,17 @@ class MainDashboard(QMainWindow):
         self.followup_ui = FollowUpManager()
         self.settings_ui = SettingsWindow()
 
+        # Connect data_changed signals from modules to refresh dashboard
+        # This requires these modules to emit data_changed signal after CRUD
+        if hasattr(self.patient_ui, 'data_changed'):
+            self.patient_ui.data_changed.connect(self.refresh_dashboard)
+        if hasattr(self.doctor_ui, 'data_changed'):
+            self.doctor_ui.data_changed.connect(self.refresh_dashboard)
+        if hasattr(self.appointment_ui, 'data_changed'):
+            self.appointment_ui.data_changed.connect(self.refresh_dashboard)
+        if hasattr(self.followup_ui, 'data_changed'):
+            self.followup_ui.data_changed.connect(self.refresh_dashboard)
+
         # Right content area (stacked views)
         self.stack = QStackedWidget()
         self.stack.addWidget(self.dashboard_ui)
@@ -106,8 +114,17 @@ class MainDashboard(QMainWindow):
     def display_page(self, index):
         self.stack.setCurrentIndex(index)
 
+    def refresh_dashboard(self):
+        """Refresh dashboard data (summary, appointments, followups)"""
+        if hasattr(self.dashboard_ui, "refresh_summary"):
+            self.dashboard_ui.refresh_summary()
+        if hasattr(self.dashboard_ui, "refresh_appointments"):
+            self.dashboard_ui.refresh_appointments()
+        if hasattr(self.dashboard_ui, "refresh_followups_for_date"):
+            self.dashboard_ui.refresh_followups_for_date()
+
     def refresh_all_dropdowns(self):
-        """Calls refresh on dropdowns that depend on shared data like patients or doctors."""
+        """Calls refresh on dropdowns and dashboard to keep data in sync."""
         if hasattr(self.followup_ui, "refresh_dropdowns"):
             self.followup_ui.refresh_dropdowns()
         if hasattr(self.appointment_ui, "refresh_dropdowns"):
@@ -115,15 +132,12 @@ class MainDashboard(QMainWindow):
         if hasattr(self.settings_ui, "refresh_dropdowns"):
             self.settings_ui.refresh_dropdowns()
 
+        self.refresh_dashboard()
+
+
 if __name__ == "__main__":
     StatusDB()
     app = QApplication(sys.argv)
     window = MainDashboard()
-    # window = SettingsWindow()
     window.show()
     sys.exit(app.exec())
-
-
-
-
-

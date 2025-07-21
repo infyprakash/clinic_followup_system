@@ -2,50 +2,51 @@ import sqlite3
 class FollowUpDB:
     def __init__(self):
         self.conn = sqlite3.connect("clinic.db")
-        self.conn.execute("PRAGMA foreign_keys = ON")
-        self.create_table()
-
-    def create_table(self):
         self.conn.execute("""
             CREATE TABLE IF NOT EXISTS followups (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                patient_id INTEGER NOT NULL,
-                date TEXT NOT NULL,
+                patient_id INTEGER,
+                doctor_id INTEGER,
+                date TEXT,
                 remarks TEXT,
                 status_id INTEGER,
-                FOREIGN KEY(patient_id) REFERENCES patients(id) ON DELETE CASCADE,
-                FOREIGN KEY(status_id) REFERENCES statuses(id) ON DELETE SET NULL
+                FOREIGN KEY (patient_id) REFERENCES patients(id),
+                FOREIGN KEY (doctor_id) REFERENCES doctors(id),
+                FOREIGN KEY (status_id) REFERENCES statuses(id)
             )
         """)
         self.conn.commit()
 
-    def insert(self, patient_id, date, remarks, status_id):
+    def insert(self, patient_id, doctor_id, date, remarks, status_id):
         self.conn.execute("""
-            INSERT INTO followups (patient_id, date, remarks, status_id)
-            VALUES (?, ?, ?, ?)
-        """, (patient_id, date, remarks, status_id))
+            INSERT INTO followups (patient_id, doctor_id, date, remarks, status_id)
+            VALUES (?, ?, ?, ?, ?)
+        """, (patient_id, doctor_id, date, remarks, status_id))
         self.conn.commit()
 
-    def update(self, followup_id, patient_id, date, remarks, status_id):
+    def update(self, id, patient_id, doctor_id, date, remarks, status_id):
         self.conn.execute("""
             UPDATE followups
-            SET patient_id = ?, date = ?, remarks = ?, status_id = ?
-            WHERE id = ?
-        """, (patient_id, date, remarks, status_id, followup_id))
+            SET patient_id=?, doctor_id=?, date=?, remarks=?, status_id=?
+            WHERE id=?
+        """, (patient_id, doctor_id, date, remarks, status_id, id))
         self.conn.commit()
 
-    def delete(self, followup_id):
-        self.conn.execute("DELETE FROM followups WHERE id = ?", (followup_id,))
+    def delete(self, id):
+        self.conn.execute("DELETE FROM followups WHERE id=?", (id,))
         self.conn.commit()
 
     def get_all(self):
         return self.conn.execute("""
-            SELECT f.id, p.name, f.date, f.remarks, s.name AS status,
+            SELECT f.id, p.name, p.phone_number, d.name AS doctor_name, f.date,
+                   f.remarks, s.name AS status,
                    (SELECT COUNT(*) FROM followups WHERE patient_id = f.patient_id) AS followup_count
             FROM followups f
             LEFT JOIN patients p ON f.patient_id = p.id
+            LEFT JOIN doctors d ON f.doctor_id = d.id
             LEFT JOIN statuses s ON f.status_id = s.id
         """).fetchall()
+
 
     def get_patient_followup_counts(self):
         return self.conn.execute("""

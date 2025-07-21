@@ -29,6 +29,14 @@ class PatientDB:
     def get_all(self):
         return self.conn.execute("SELECT id, name,phone_number FROM patients").fetchall()
 
+    def get_phone_by_patient_name(self, patient_name):
+        cursor = self.conn.execute(
+            "SELECT phone_number FROM patients WHERE name = ?",
+            (patient_name,)
+        )
+        row = cursor.fetchone()
+        return row[0] if row else None
+
     def get_all_with_summary(self):
         return self.conn.execute("""
             SELECT 

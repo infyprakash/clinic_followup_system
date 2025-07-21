@@ -11,8 +11,6 @@ from database.followup_db import FollowUpDB
 from PyQt6.QtGui import QColor
 
 
-
-
 class Dashboard(QWidget):
     def __init__(self):
         super().__init__()
@@ -54,16 +52,22 @@ class Dashboard(QWidget):
 
         appt_search_layout = QVBoxLayout()
         self.appt_search_input = QLineEdit()
-        self.appt_search_input.setPlaceholderText("🔍 Search Appointments by patient name...")
+        self.appt_search_input.setPlaceholderText("🔍 Search Appointments by patient name or phone...")
         self.appt_search_input.textChanged.connect(self.refresh_appointments)
         appt_search_layout.addWidget(self._group_box("Search Patient", self.appt_search_input))
         appt_controls_layout.addLayout(appt_search_layout)
 
         appt_layout.addLayout(appt_controls_layout)
 
-        # Appointment table
-        self.appt_table = QTableWidget(0, 4)
-        self.appt_table.setHorizontalHeaderLabels(["Date", "Patient", "Doctor", "Status"])
+        # Appointment table with wider columns
+        self.appt_table = QTableWidget(0, 5)
+        self.appt_table.setHorizontalHeaderLabels(["Date", "Patient", "Phone", "Doctor", "Status"])
+        self.appt_table.setColumnWidth(0, 100)  # Date
+        self.appt_table.setColumnWidth(1, 150)  # Patient
+        self.appt_table.setColumnWidth(2, 120)  # Phone
+        self.appt_table.setColumnWidth(3, 150)  # Doctor
+        self.appt_table.setColumnWidth(4, 100)  # Status
+
         appt_layout.addWidget(self._group_box("Appointments", self.appt_table))
 
         appt_tab.setLayout(appt_layout)
@@ -83,16 +87,22 @@ class Dashboard(QWidget):
 
         fup_search_layout = QVBoxLayout()
         self.fup_search_input = QLineEdit()
-        self.fup_search_input.setPlaceholderText("🔍 Search Follow-Ups by patient name...")
+        self.fup_search_input.setPlaceholderText("🔍 Search Follow-Ups by patient name or phone...")
         self.fup_search_input.textChanged.connect(self.refresh_followups_for_date)
         fup_search_layout.addWidget(self._group_box("Search Patient", self.fup_search_input))
         fup_controls_layout.addLayout(fup_search_layout)
 
         fup_layout.addLayout(fup_controls_layout)
 
-        # Follow-up table
-        self.followup_table = QTableWidget(0, 4)
-        self.followup_table.setHorizontalHeaderLabels(["Date", "Patient", "Remarks", "Status"])
+        # Follow-up table with wider columns
+        self.followup_table = QTableWidget(0, 5)
+        self.followup_table.setHorizontalHeaderLabels(["Date", "Patient", "Phone", "Remarks", "Status"])
+        self.followup_table.setColumnWidth(0, 100)  # Date
+        self.followup_table.setColumnWidth(1, 150)  # Patient
+        self.followup_table.setColumnWidth(2, 120)  # Phone
+        self.followup_table.setColumnWidth(3, 200)  # Remarks
+        self.followup_table.setColumnWidth(4, 100)  # Status
+
         fup_layout.addWidget(self._group_box("Follow-Ups for Selected Date", self.followup_table))
 
         fup_tab.setLayout(fup_layout)
@@ -126,29 +136,37 @@ class Dashboard(QWidget):
         self.pending_followups.setText(f"Pending Follow-Ups: {len(pending_fups)}")
 
     def refresh_appointments(self):
-            keyword = self.appt_search_input.text().lower()
-            selected_date = self.appt_calendar.selectedDate().toString("yyyy-MM-dd")
-            data = self.appointment_db.get_by_date(selected_date)
+        keyword = self.appt_search_input.text().lower()
+        selected_date = self.appt_calendar.selectedDate().toString("yyyy-MM-dd")
+        data = self.appointment_db.get_by_date(selected_date)
 
-            self.appt_table.setRowCount(0)
-            for row in data:
-                date, patient, doctor, status = row
-                if keyword and keyword not in patient.lower():
-                    continue
-                row_pos = self.appt_table.rowCount()
-                self.appt_table.insertRow(row_pos)
+        self.appt_table.setRowCount(0)
+        for row in data:
+            # Assuming row = [date, patient, doctor, status]
+            date, patient, doctor, status = row
 
-                for col, val in enumerate(row):
-                    item = QTableWidgetItem(str(val))
-                    self.appt_table.setItem(row_pos, col, item)
+            # Fetch patient phone number (you should implement get_phone_by_patient_name)
+            phone = self.patient_db.get_phone_by_patient_name(patient) or ""
 
-                # Apply row color based on status
-                if status.lower() == "pending":
-                    self._set_row_color(self.appt_table, row_pos, "#fff3cd")  # Yellow
-                elif status.lower() == "cancelled":
-                    self._set_row_color(self.appt_table, row_pos, "#f8d7da")  # Red
-                elif status.lower() == "completed":
-                    self._set_row_color(self.appt_table, row_pos, "#d4edda")  # Green
+            # Filter search by patient name or phone
+            if keyword and (keyword not in patient.lower() and keyword not in phone):
+                continue
+
+            row_pos = self.appt_table.rowCount()
+            self.appt_table.insertRow(row_pos)
+
+            values = [date, patient, phone, doctor, status]
+            for col, val in enumerate(values):
+                item = QTableWidgetItem(str(val))
+                self.appt_table.setItem(row_pos, col, item)
+
+            # Apply row color based on status
+            if status.lower() == "pending":
+                self._set_row_color(self.appt_table, row_pos, "#fff3cd")  # Yellow
+            elif status.lower() == "cancelled":
+                self._set_row_color(self.appt_table, row_pos, "#f8d7da")  # Red
+            elif status.lower() == "completed":
+                self._set_row_color(self.appt_table, row_pos, "#d4edda")  # Green
 
     def refresh_followups_for_date(self):
         keyword = self.fup_search_input.text().lower()
@@ -158,24 +176,30 @@ class Dashboard(QWidget):
         self.followup_table.setRowCount(0)
         for row in data:
             # Assuming row = [date, patient, remarks, status]
-            if keyword and keyword not in row[1].lower():
+            date, patient, remarks, status = row
+
+            # Fetch patient phone number
+            phone = self.patient_db.get_phone_by_patient_name(patient) or ""
+
+            # Filter by patient name or phone
+            if keyword and (keyword not in patient.lower() and keyword not in phone):
                 continue
+
             row_pos = self.followup_table.rowCount()
             self.followup_table.insertRow(row_pos)
 
-            for col, val in enumerate(row):
+            values = [date, patient, phone, remarks, status]
+            for col, val in enumerate(values):
                 item = QTableWidgetItem(str(val))
                 self.followup_table.setItem(row_pos, col, item)
 
             # Apply row color based on status
-            status = row[3].lower()
-            if status == "pending":
+            if status.lower() == "pending":
                 self._set_row_color(self.followup_table, row_pos, "#fff3cd")  # Yellow
-            elif status == "cancelled":
+            elif status.lower() == "cancelled":
                 self._set_row_color(self.followup_table, row_pos, "#f8d7da")  # Red
-            elif status == "completed":
+            elif status.lower() == "completed":
                 self._set_row_color(self.followup_table, row_pos, "#d4edda")  # Green
-
 
     def on_appt_calendar_date_selected(self):
         self.refresh_appointments()

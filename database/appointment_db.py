@@ -45,8 +45,8 @@ class AppointmentDB:
 
     def get_all(self):
         return self.conn.execute("""
-            SELECT a.id, p.name AS patient, d.name AS doctor, a.date, a.time,
-                   a.reason, s.name AS status
+            SELECT a.id, p.name AS patient, p.phone_number, d.name AS doctor, a.date, a.time,
+                a.reason, s.name AS status
             FROM appointments a
             LEFT JOIN patients p ON a.patient_id = p.id
             LEFT JOIN doctors d ON a.doctor_id = d.id

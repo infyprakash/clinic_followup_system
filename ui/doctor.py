@@ -2,7 +2,7 @@
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLineEdit, QComboBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QLabel, QMessageBox
+    QPushButton, QTableWidget, QTableWidgetItem, QLabel, QMessageBox,QFormLayout,QFrame
 )
 from database.doctor_db import DoctorDB
 from database.setting_db import SpecializationDB
@@ -26,42 +26,40 @@ class DoctorManagement(QWidget):
 
     def initUI(self):
         main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
 
         # --- Top Half: Form and Buttons ---
         top_layout = QHBoxLayout()
 
-        # 🎯 Font for inputs and buttons
-        input_font = QFont()
-        input_font.setPointSize(12)
+        input_font = QFont("Arial", 12)
 
-        # 📋 Left side: Form
-        form_layout = QVBoxLayout()
+        # 📋 Left: Doctor Form
+        form_layout = QFormLayout()
+        form_layout.setLabelAlignment(Qt.AlignmentFlag.AlignLeft)
+        form_layout.setFormAlignment(Qt.AlignmentFlag.AlignTop)
+
         self.name_input = QLineEdit()
         self.name_input.setPlaceholderText("Enter Doctor Name")
         self.name_input.setFont(input_font)
+        self.name_input.setMinimumWidth(400)
+        self.name_input.setMinimumHeight(35)
 
         self.spec_input = QComboBox()
         self.spec_input.setFont(input_font)
+        self.spec_input.setMinimumWidth(400)
+        self.spec_input.setMinimumHeight(35)
         self.refresh_specialization_dropdown()
 
-        # Labels and fields vertically
-        for label_text, widget in [
-            ("Name", self.name_input),
-            ("Specialization", self.spec_input)
-        ]:
-            lbl = QLabel(label_text)
-            lbl.setFont(input_font)
-            form_layout.addWidget(lbl)
-            form_layout.addWidget(widget)
+        form_layout.addRow("👨‍⚕️ Name:", self.name_input)
+        form_layout.addRow("🔬 Specialization:", self.spec_input)
 
         top_layout.addLayout(form_layout, 2)
 
         # 🔘 Right side: Buttons
         button_layout = QVBoxLayout()
-        button_layout.setSpacing(12)
+        button_layout.setSpacing(15)
 
-        button_font = QFont()
-        button_font.setPointSize(11)
+        button_font = QFont("Arial", 11)
 
         def styled_button(text, color):
             btn = QPushButton(text)
@@ -70,18 +68,21 @@ class DoctorManagement(QWidget):
                 QPushButton {{
                     background-color: {color};
                     color: white;
-                    padding: 8px 16px;
-                    border-radius: 6px;
+                    padding: 10px 18px;
+                    border-radius: 8px;
+                }}
+                QPushButton:hover {{
+                    background-color: {color};
+                    opacity: 0.9;
                 }}
             """)
-            btn.setMinimumHeight(40)
-            btn.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            btn.setMinimumHeight(42)
             return btn
 
-        add_btn = styled_button("Add", "#28a745")         # Green
-        update_btn = styled_button("Update", "#007bff")   # Blue
-        delete_btn = styled_button("Delete", "#dc3545")   # Red
-        clear_btn = styled_button("Clear", "#6c757d")     # Gray
+        add_btn = styled_button("➕ Add", "#28a745")
+        update_btn = styled_button("🔄 Update", "#007bff")
+        delete_btn = styled_button("🗑️ Delete", "#dc3545")
+        clear_btn = styled_button("🧹 Clear", "#6c757d")
 
         add_btn.clicked.connect(self.add_doctor)
         update_btn.clicked.connect(self.update_doctor)
@@ -94,27 +95,48 @@ class DoctorManagement(QWidget):
         top_layout.addLayout(button_layout, 1)
         main_layout.addLayout(top_layout)
 
-        # --- Spacer ---
-        main_layout.addSpacing(30)
+        # --- Separator ---
+        separator = QFrame()
+        separator.setFrameShape(QFrame.Shape.HLine)
+        separator.setFrameShadow(QFrame.Shadow.Sunken)
+        main_layout.addWidget(separator)
 
-        # 🔍 (Optional) Search Field — if you want to filter doctors
+        # 🔍 Search bar
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search doctors...")
+        self.search_input.setPlaceholderText("🔍 Search doctors...")
         self.search_input.setFont(input_font)
+        self.search_input.setMinimumHeight(40)
+        self.search_input.setStyleSheet("padding: 6px;")
         self.search_input.textChanged.connect(self.refresh_table)
         main_layout.addWidget(self.search_input)
 
-        # 📊 Table
+        # 📊 Doctor Table
         self.table = QTableWidget()
         self.table.setColumnCount(3)
         self.table.setHorizontalHeaderLabels(["ID", "Name", "Specialization"])
         self.table.setFont(QFont("Arial", 11))
+        self.table.setStyleSheet("""
+            QTableWidget {
+                border: 1px solid #ccc;
+                background-color: #f9f9f9;
+            }
+            QHeaderView::section {
+                background-color: #007bff;
+                color: white;
+                padding: 8px;
+                border: 1px solid #ddd;
+            }
+        """)
+        self.table.horizontalHeader().setStretchLastSection(True)
+        self.table.setAlternatingRowColors(True)
+        self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.cellClicked.connect(self.table_clicked)
 
         main_layout.addWidget(self.table)
         self.setLayout(main_layout)
 
         self.refresh_table()
+
 
 
     def refresh_specialization_dropdown(self):
