@@ -78,7 +78,7 @@ class FollowUpDB:
 
     def get_all_joined(self):
         return self.conn.execute("""
-            SELECT f.date, p.name, f.remarks, s.name
+            SELECT f.date, p.name,d.name,f.remarks, s.name
             FROM followups f
             JOIN patients p ON f.patient_id = p.id
             JOIN statuses s ON f.status_id = s.id
@@ -86,9 +86,10 @@ class FollowUpDB:
 
     def get_by_date(self, date_str):
         return self.conn.execute("""
-            SELECT f.date, p.name, f.remarks, s.name
+            SELECT f.date, p.name,d.name,(SELECT COUNT(*) FROM followups WHERE patient_id = f.patient_id) AS followup_count,f.remarks, s.name
             FROM followups f
             JOIN patients p ON f.patient_id = p.id
+            JOIN doctors d ON f.doctor_id = d.id
             JOIN statuses s ON f.status_id = s.id
             WHERE f.date = ?
         """, (date_str,)).fetchall()

@@ -55,7 +55,7 @@ class AppointmentDB:
 
     def get_by_date(self, date_str):
         return self.conn.execute("""
-            SELECT a.date, p.name, d.name, s.name
+            SELECT a.date,a.time,a.reason,p.name, d.name, s.name
             FROM appointments a
             JOIN patients p ON a.patient_id = p.id
             JOIN doctors d ON a.doctor_id = d.id
