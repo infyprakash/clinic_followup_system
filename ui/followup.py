@@ -264,9 +264,15 @@ class FollowUpManager(QWidget):
 
         self.table.setRowCount(0)
         for row in rows:
-            patient_name = row[1].lower()
-            patient_phone = row[2].lower()
-            doctor_name = row[3].lower()
+            patient_name=""
+            patient_phone=""
+            doctor_name=""
+            try:
+                patient_name = row[1].lower()
+                patient_phone = row[2].lower()
+                doctor_name = row[3].lower()
+            except Exception as e:
+                pass
 
             if keyword and keyword not in patient_name and keyword not in patient_phone and keyword not in doctor_name:
                 continue
